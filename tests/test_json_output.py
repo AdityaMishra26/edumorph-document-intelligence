@@ -1,62 +1,147 @@
-from src.pdf_reader.reader import PDFReader
-from src.layout.layout_analyzer import LayoutAnalyzer
-from src.heading_detection.heading_detector import HeadingDetector
-from src.topic_detection.topic_detector import TopicDetector
-from src.table_detection.table_detector import TableDetector
-from src.document_structure.structure_builder import DocumentStructureBuilder
+import json
+import os
+import unittest
+
 from src.output.json_writer import JSONWriter
 
 
-def main():
+class TestJSONWriter(unittest.TestCase):
 
-    pdf_path = "sample_data/input/sample.pdf"
+    def setUp(self):
 
-    # Read PDF
-    pdf_reader = PDFReader(pdf_path)
-    document_info = pdf_reader.get_document_info()
+        self.output_path = (
+            "sample_data/output/test_document_analysis.json"
+        )
 
-    # Analyze layout
-    layout_analyzer = LayoutAnalyzer()
-    layout_data = layout_analyzer.analyze_pdf(pdf_path)
+        self.sample_data = {
+            "file_name": "test.pdf",
+            "page_count": 2,
+            "pages": [
+                {
+                    "page_number": 1,
+                    "text": "Sample page one",
+                    "headings": [],
+                    "topics": [],
+                    "tables": []
+                },
+                {
+                    "page_number": 2,
+                    "text": "Sample page two",
+                    "headings": [],
+                    "topics": [],
+                    "tables": []
+                }
+            ]
+        }
 
-    # Detect headings
-    heading_detector = HeadingDetector()
-    heading_data = heading_detector.detect_headings(
-        layout_data
-    )
+        self.writer = JSONWriter()
 
-    # Detect topics
-    topic_detector = TopicDetector()
-    topic_data = topic_detector.detect_topics(
-        document_info["pages"]
-    )
+        # Remove old test file before each test
+        if os.path.exists(self.output_path):
+            os.remove(self.output_path)
 
-    # Detect tables
-    table_detector = TableDetector()
-    table_data = table_detector.detect_tables(
-        pdf_path
-    )
+    def tearDown(self):
 
-    # Build document structure
-    structure_builder = DocumentStructureBuilder()
-    document_structure = structure_builder.build_structure(
-        document_info,
-        heading_data,
-        topic_data,
-        table_data
-    )
+        # Remove test file after each test
+        if os.path.exists(self.output_path):
+            os.remove(self.output_path)
 
-    # Save as JSON
-    json_writer = JSONWriter()
-    output_path = json_writer.save(
-        document_structure
-    )
+    def test_writer_exists(self):
 
-    print("\n========== JSON OUTPUT ==========\n")
-    print(f"JSON file created successfully:")
-    print(output_path)
+        self.assertIsNotNone(
+            self.writer
+        )
+
+    def test_save_returns_output_path(self):
+
+        result = self.writer.save(
+            self.sample_data,
+            self.output_path
+        )
+
+        self.assertEqual(
+            result,
+            self.output_path
+        )
+
+    def test_json_file_is_created(self):
+
+        self.writer.save(
+            self.sample_data,
+            self.output_path
+        )
+
+        self.assertTrue(
+            os.path.exists(self.output_path)
+        )
+
+    def test_json_content_is_correct(self):
+
+        self.writer.save(
+            self.sample_data,
+            self.output_path
+        )
+
+        with open(
+            self.output_path,
+            "r",
+            encoding="utf-8"
+        ) as json_file:
+
+            loaded_data = json.load(
+                json_file
+            )
+
+        self.assertEqual(
+            loaded_data,
+            self.sample_data
+        )
+
+    def test_json_is_valid(self):
+
+        self.writer.save(
+            self.sample_data,
+            self.output_path
+        )
+
+        with open(
+            self.output_path,
+            "r",
+            encoding="utf-8"
+        ) as json_file:
+
+            loaded_data = json.load(
+                json_file
+            )
+
+        self.assertIsInstance(
+            loaded_data,
+            dict
+        )
+
+    def test_output_directory_is_created(self):
+
+        output_path = (
+            "sample_data/output/test_directory/"
+            "test_output.json"
+        )
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        self.writer.save(
+            self.sample_data,
+            output_path
+        )
+
+        self.assertTrue(
+            os.path.exists(output_path)
+        )
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
 
 if __name__ == "__main__":
 
-    main()
+    unittest.main()
