@@ -1,22 +1,7 @@
-# Python
 __pycache__/
-*.py[cod]
-*.so
+*.pyc
 
-# Virtual environments
-venv/
-.env/
+uploads/
+outputs/
 
-# Conda
-.conda/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-
-# Test files
-sample_data/input/
-sample_data/output/
+frontend/sample_analysis.json
