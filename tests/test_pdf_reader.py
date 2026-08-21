@@ -1,20 +1,86 @@
+import unittest
+
 from src.pdf_reader.reader import PDFReader
 
 
-pdf_path = "sample_data/input/sample.pdf"
+class TestPDFReader(unittest.TestCase):
 
-reader = PDFReader(pdf_path)
+    def setUp(self):
 
-document_info = reader.get_document_info()
+        self.pdf_path = "sample_data/input/sample.pdf"
 
-print("File Name:", document_info["file_name"])
-print("Page Count:", document_info["page_count"])
-print()
+        self.reader = PDFReader(self.pdf_path)
 
-for page in document_info["pages"]:
-    print(f"--- PAGE {page['page_number']} ---")
-    print("Width:", page["width"])
-    print("Height:", page["height"])
-    print("Text Preview:")
-    print(page["text"][:500])
-    print()
+        self.document_info = (
+            self.reader.get_document_info()
+        )
+
+    def test_file_name(self):
+
+        self.assertEqual(
+            self.document_info["file_name"],
+            "sample.pdf"
+        )
+
+    def test_page_count(self):
+
+        self.assertEqual(
+            self.document_info["page_count"],
+            2
+        )
+
+    def test_pages_exist(self):
+
+        pages = self.document_info["pages"]
+
+        self.assertEqual(
+            len(pages),
+            2
+        )
+
+    def test_page_numbers(self):
+
+        pages = self.document_info["pages"]
+
+        self.assertEqual(
+            pages[0]["page_number"],
+            1
+        )
+
+        self.assertEqual(
+            pages[1]["page_number"],
+            2
+        )
+
+    def test_page_text_exists(self):
+
+        pages = self.document_info["pages"]
+
+        self.assertTrue(
+            len(pages[0]["text"]) > 0
+        )
+
+        self.assertTrue(
+            len(pages[1]["text"]) > 0
+        )
+
+    def test_page_dimensions(self):
+
+        pages = self.document_info["pages"]
+
+        for page in pages:
+
+            self.assertGreater(
+                page["width"],
+                0
+            )
+
+            self.assertGreater(
+                page["height"],
+                0
+            )
+
+
+if __name__ == "__main__":
+
+    unittest.main()
