@@ -1,179 +1,95 @@
-const API_URL =
-    "http://127.0.0.1:8000/analyze";
+const uploadArea = document.getElementById("uploadArea");
+const pdfFile = document.getElementById("pdfFile");
+const selectedFile = document.getElementById("selectedFile");
+const selectedFileName = document.getElementById("selectedFileName");
+const selectedFileSize = document.getElementById("selectedFileSize");
+const removeFileButton = document.getElementById("removeFileButton");
+const analyzeButton = document.getElementById("analyzeButton");
+const buttonText = document.getElementById("buttonText");
+const status = document.getElementById("status");
+
+let selectedPDF = null;
 
 
-const pdfFileInput =
-    document.getElementById(
-        "pdfFile"
-    );
-
-const uploadArea =
-    document.getElementById(
-        "uploadArea"
-    );
-
-const analyzeButton =
-    document.getElementById(
-        "analyzeButton"
-    );
-
-const removeFileButton =
-    document.getElementById(
-        "removeFileButton"
-    );
-
-const selectedFile =
-    document.getElementById(
-        "selectedFile"
-    );
-
-const selectedFileName =
-    document.getElementById(
-        "selectedFileName"
-    );
-
-const selectedFileSize =
-    document.getElementById(
-        "selectedFileSize"
-    );
-
-const buttonText =
-    document.getElementById(
-        "buttonText"
-    );
-
-const statusElement =
-    document.getElementById(
-        "status"
-    );
-
-const resultsElement =
-    document.getElementById(
-        "results"
-    );
-
-const fileNameElement =
-    document.getElementById(
-        "fileName"
-    );
-
-const pageCountElement =
-    document.getElementById(
-        "pageCount"
-    );
-
-const elementCountElement =
-    document.getElementById(
-        "elementCount"
-    );
-
-const pagesContainer =
-    document.getElementById(
-        "pagesContainer"
-    );
-
+// ----------------------------------------
+// OPEN FILE SELECTOR
+// ----------------------------------------
 
 uploadArea.addEventListener(
     "click",
-    function () {
-
-        pdfFileInput.click();
-
+    () => {
+        pdfFile.click();
     }
 );
 
 
-pdfFileInput.addEventListener(
+// ----------------------------------------
+// FILE SELECTED
+// ----------------------------------------
+
+pdfFile.addEventListener(
     "change",
-    function () {
+    (event) => {
+        const file = event.target.files[0];
 
-        if (
-            pdfFileInput.files.length > 0
-        ) {
-
-            selectFile(
-                pdfFileInput.files[0]
-            );
-
+        if (!file) {
+            return;
         }
 
+        selectFile(file);
     }
 );
 
+
+// ----------------------------------------
+// DRAG AND DROP
+// ----------------------------------------
 
 uploadArea.addEventListener(
     "dragover",
-    function (event) {
-
+    (event) => {
         event.preventDefault();
 
-        uploadArea.classList.add(
-            "dragging"
-        );
-
+        uploadArea.classList.add("drag-active");
     }
 );
 
 
 uploadArea.addEventListener(
     "dragleave",
-    function () {
-
-        uploadArea.classList.remove(
-            "dragging"
-        );
-
+    () => {
+        uploadArea.classList.remove("drag-active");
     }
 );
 
 
 uploadArea.addEventListener(
     "drop",
-    function (event) {
-
+    (event) => {
         event.preventDefault();
 
-        uploadArea.classList.remove(
-            "dragging"
-        );
+        uploadArea.classList.remove("drag-active");
 
-        const file =
-            event.dataTransfer.files[0];
+        const file = event.dataTransfer.files[0];
 
-        if (file) {
-
-            selectFile(
-                file
-            );
-
+        if (!file) {
+            return;
         }
 
+        selectFile(file);
     }
 );
 
 
-removeFileButton.addEventListener(
-    "click",
-    function () {
-
-        clearSelectedFile();
-
-    }
-);
-
-
-analyzeButton.addEventListener(
-    "click",
-    analyzeDocument
-);
-
+// ----------------------------------------
+// SELECT PDF
+// ----------------------------------------
 
 function selectFile(file) {
 
     if (
-        !file.name
-            .toLowerCase()
-            .endsWith(".pdf")
+        file.type !== "application/pdf" &&
+        !file.name.toLowerCase().endsWith(".pdf")
     ) {
 
         showStatus(
@@ -182,158 +98,88 @@ function selectFile(file) {
         );
 
         return;
-
     }
 
+    selectedPDF = file;
 
-    const dataTransfer =
-        new DataTransfer();
+    selectedFileName.textContent = file.name;
 
-    dataTransfer.items.add(
-        file
+    selectedFileSize.textContent = formatFileSize(
+        file.size
     );
 
-    pdfFileInput.files =
-        dataTransfer.files;
+    uploadArea.classList.add("hidden");
 
-
-    selectedFileName.textContent =
-        file.name;
-
-    selectedFileSize.textContent =
-        formatFileSize(
-            file.size
-        );
-
-
-    selectedFile.classList.remove(
-        "hidden"
-    );
-
-
-    uploadArea.classList.add(
-        "hidden"
-    );
-
+    selectedFile.classList.remove("hidden");
 
     analyzeButton.disabled = false;
 
-
-    showStatus(
-        "PDF ready for analysis.",
-        "success"
-    );
-
+    clearStatus();
 }
 
 
-function clearSelectedFile() {
+// ----------------------------------------
+// REMOVE FILE
+// ----------------------------------------
 
-    pdfFileInput.value = "";
+removeFileButton.addEventListener(
+    "click",
+    () => {
 
-    selectedFile.classList.add(
-        "hidden"
-    );
+        selectedPDF = null;
 
-    uploadArea.classList.remove(
-        "hidden"
-    );
+        pdfFile.value = "";
 
-    analyzeButton.disabled = true;
+        selectedFile.classList.add("hidden");
 
-    statusElement.textContent = "";
+        uploadArea.classList.remove("hidden");
 
-    statusElement.className =
-        "status-message";
+        analyzeButton.disabled = true;
 
-}
-
-
-function formatFileSize(bytes) {
-
-    if (bytes < 1024) {
-
-        return bytes + " bytes";
-
+        clearStatus();
     }
+);
 
 
-    const kilobytes =
-        bytes / 1024;
+// ----------------------------------------
+// ANALYZE DOCUMENT
+// ----------------------------------------
 
+analyzeButton.addEventListener(
+    "click",
+    async () => {
 
-    if (kilobytes < 1024) {
+        if (!selectedPDF) {
 
-        return (
-            kilobytes.toFixed(1) +
-            " KB"
-        );
+            showStatus(
+                "Please select a PDF first.",
+                "error"
+            );
 
-    }
+            return;
+        }
 
-
-    const megabytes =
-        kilobytes / 1024;
-
-
-    return (
-        megabytes.toFixed(2) +
-        " MB"
-    );
-
-}
-
-
-async function analyzeDocument() {
-
-    const file =
-        pdfFileInput.files[0];
-
-
-    if (!file) {
-
-        showStatus(
-            "Please select a PDF first.",
-            "error"
-        );
-
-        return;
-
-    }
-
-
-    analyzeButton.disabled = true;
-
-    buttonText.textContent =
-        "Analyzing...";
-
-
-    showStatus(
-        "EduMorph is analyzing your document...",
-        "loading"
-    );
-
-
-    resultsElement.classList.add(
-        "hidden"
-    );
-
-
-    try {
-
-        const formData =
-            new FormData();
-
+        const formData = new FormData();
 
         formData.append(
             "file",
-            file
+            selectedPDF
         );
 
+        analyzeButton.disabled = true;
 
-        const response =
-            await fetch(
-                API_URL,
+        buttonText.textContent =
+            "Analyzing Document...";
+
+        showStatus(
+            "Uploading and analyzing your PDF...",
+            "loading"
+        );
+
+        try {
+
+            const response = await fetch(
+                "http://127.0.0.1:8000/analyze",
                 {
                     method: "POST",
                     body: formData
@@ -341,446 +187,210 @@ async function analyzeDocument() {
             );
 
 
-        const data =
-            await response.json();
+            if (!response.ok) {
 
+                let errorMessage =
+                    "Document analysis was unsuccessful.";
 
-        if (!response.ok) {
+                try {
 
-            throw new Error(
-                data.detail ||
-                "Document analysis failed."
-            );
+                    const errorData =
+                        await response.json();
 
-        }
+                    if (errorData.detail) {
 
+                        errorMessage =
+                            errorData.detail;
+                    }
 
-        if (!data.success) {
+                } catch (error) {
 
-            throw new Error(
-                "Document analysis was unsuccessful."
-            );
+                    console.error(error);
+                }
 
-        }
-
-
-        displayResults(
-            data.analysis,
-            file.name
-        );
-
-
-        showStatus(
-            "Analysis completed successfully!",
-            "success"
-        );
-
-
-        resultsElement.scrollIntoView(
-            {
-                behavior: "smooth",
-                block: "start"
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-
-        showStatus(
-            error.message ||
-            "Something went wrong.",
-            "error"
-        );
-
-    } finally {
-
-        analyzeButton.disabled = false;
-
-        buttonText.textContent =
-            "Analyze Document";
-
-    }
-
-}
-
-
-function displayResults(
-    analysis,
-    originalFileName
-) {
-
-    fileNameElement.textContent =
-        originalFileName;
-
-    pageCountElement.textContent =
-        analysis.page_count;
-
-
-    pagesContainer.innerHTML = "";
-
-
-    let totalElements = 0;
-
-
-    analysis.pages.forEach(
-        function (page) {
-
-            const elements =
-                page.elements || [];
-
-
-            totalElements +=
-                elements.length;
-
-
-            const pageCard =
-                document.createElement(
-                    "div"
+                throw new Error(
+                    errorMessage
                 );
-
-            pageCard.className =
-                "page-card";
-
-
-            const pageTitle =
-                document.createElement(
-                    "h3"
-                );
-
-            pageTitle.className =
-                "page-title";
-
-
-            pageTitle.innerHTML =
-                `
-                <span class="page-number">
-                    ${page.page_number}
-                </span>
-                Page ${page.page_number}
-                `;
-
-
-            pageCard.appendChild(
-                pageTitle
-            );
-
-
-            if (
-                elements.length === 0
-            ) {
-
-                const emptyMessage =
-                    document.createElement(
-                        "p"
-                    );
-
-                emptyMessage.textContent =
-                    "No structured elements detected.";
-
-                pageCard.appendChild(
-                    emptyMessage
-                );
-
             }
 
 
-            elements.forEach(
-                function (element) {
+            // --------------------------------
+            // GET JSON RESPONSE
+            // --------------------------------
 
-                    const elementCard =
-                        createElementCard(
-                            element
-                        );
+            const analysisData =
+                await response.json();
 
-                    pageCard.appendChild(
-                        elementCard
-                    );
 
+            // --------------------------------
+            // CREATE JSON FILE
+            // --------------------------------
+
+            const jsonContent =
+                JSON.stringify(
+                    analysisData,
+                    null,
+                    2
+                );
+
+
+            const blob = new Blob(
+                [jsonContent],
+                {
+                    type:
+                        "application/json"
                 }
             );
 
 
-            const topicsCard =
-                createTopicsCard(
-                    page.topics || []
+            const downloadURL =
+                URL.createObjectURL(
+                    blob
                 );
 
 
-            pageCard.appendChild(
-                topicsCard
+            const downloadLink =
+                document.createElement("a");
+
+
+            downloadLink.href =
+                downloadURL;
+
+
+            downloadLink.download =
+                selectedPDF.name
+                    .replace(
+                        /\.pdf$/i,
+                        ""
+                    ) +
+                "_analysis.json";
+
+
+            document.body.appendChild(
+                downloadLink
             );
 
 
-            pagesContainer.appendChild(
-                pageCard
+            downloadLink.click();
+
+
+            document.body.removeChild(
+                downloadLink
             );
 
+
+            URL.revokeObjectURL(
+                downloadURL
+            );
+
+
+            showStatus(
+                "Analysis complete. Your JSON file has been downloaded.",
+                "success"
+            );
+
+
+            buttonText.textContent =
+                "Analysis Complete";
+
+
+            setTimeout(
+                () => {
+
+                    buttonText.textContent =
+                        "Analyze Document";
+
+                    analyzeButton.disabled =
+                        false;
+
+                },
+                1500
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Analysis error:",
+                error
+            );
+
+
+            showStatus(
+                error.message ||
+                "Document analysis was unsuccessful.",
+                "error"
+            );
+
+
+            buttonText.textContent =
+                "Analyze Document";
+
+            analyzeButton.disabled =
+                false;
         }
-    );
+    }
+);
 
 
-    elementCountElement.textContent =
-        totalElements;
+// ----------------------------------------
+// FILE SIZE FORMATTER
+// ----------------------------------------
 
+function formatFileSize(bytes) {
 
-    resultsElement.classList.remove(
-        "hidden"
-    );
-
-}
-
-
-function createElementCard(
-    element
-) {
-
-    const card =
-        document.createElement(
-            "div"
-        );
-
-    card.className =
-        "element-card " +
-        element.type;
-
-
-    const type =
-        document.createElement(
-            "div"
-        );
-
-    type.className =
-        "element-type";
-
-    type.textContent =
-        element.type;
-
-
-    card.appendChild(
-        type
-    );
-
-
-    if (element.text) {
-
-        const text =
-            document.createElement(
-                "p"
-            );
-
-        text.className =
-            "element-text";
-
-        text.textContent =
-            element.text;
-
-        card.appendChild(
-            text
-        );
-
+    if (bytes === 0) {
+        return "0 Bytes";
     }
 
+    const units = [
+        "Bytes",
+        "KB",
+        "MB",
+        "GB"
+    ];
 
-    if (
-        element.type === "table"
-    ) {
+    const index = Math.floor(
+        Math.log(bytes) /
+        Math.log(1024)
+    );
 
-        const info =
-            document.createElement(
-                "p"
-            );
-
-        info.className =
-            "element-text";
-
-        info.textContent =
-            "Table " +
+    return (
+        parseFloat(
             (
-                element.table_number ||
-                ""
-            );
-
-        card.appendChild(
-            info
-        );
-
-    }
-
-
-    if (
-        element.type === "image"
-    ) {
-
-        const info =
-            document.createElement(
-                "p"
-            );
-
-        info.className =
-            "element-text";
-
-        info.textContent =
-            "Detected image " +
-            (
-                element.image_number ||
-                ""
-            );
-
-        card.appendChild(
-            info
-        );
-
-    }
-
-
-    if (
-        element.type === "drawing"
-    ) {
-
-        const info =
-            document.createElement(
-                "p"
-            );
-
-        info.className =
-            "element-text";
-
-        info.textContent =
-            "Detected vector drawing";
-
-        card.appendChild(
-            info
-        );
-
-    }
-
-
-    return card;
-
+                bytes /
+                Math.pow(
+                    1024,
+                    index
+                )
+            ).toFixed(2)
+        ) +
+        " " +
+        units[index]
+    );
 }
 
 
-function createTopicsCard(
-    topics
-) {
-
-    const card =
-        document.createElement(
-            "div"
-        );
-
-    card.className =
-        "topics-card";
-
-
-    const title =
-        document.createElement(
-            "h4"
-        );
-
-    title.textContent =
-        "Detected Topics";
-
-
-    card.appendChild(
-        title
-    );
-
-
-    if (topics.length === 0) {
-
-        const empty =
-            document.createElement(
-                "p"
-            );
-
-        empty.textContent =
-            "No topics detected.";
-
-        card.appendChild(
-            empty
-        );
-
-        return card;
-
-    }
-
-
-    const topicsList =
-        document.createElement(
-            "div"
-        );
-
-    topicsList.className =
-        "topics-list";
-
-
-    topics.forEach(
-        function (topic) {
-
-            const topicItem =
-                document.createElement(
-                    "span"
-                );
-
-            topicItem.className =
-                "topic-tag";
-
-
-            const topicText =
-                Array.isArray(topic)
-                    ? topic[0]
-                    : topic.text;
-
-
-            const topicCount =
-                Array.isArray(topic)
-                    ? topic[1]
-                    : topic.count;
-
-
-            topicItem.textContent =
-                topicText +
-                (
-                    topicCount
-                        ? " · " +
-                          topicCount
-                        : ""
-                );
-
-
-            topicsList.appendChild(
-                topicItem
-            );
-
-        }
-    );
-
-
-    card.appendChild(
-        topicsList
-    );
-
-
-    return card;
-
-}
-
+// ----------------------------------------
+// STATUS MESSAGE
+// ----------------------------------------
 
 function showStatus(
     message,
     type
 ) {
 
-    statusElement.textContent =
+    status.textContent =
         message;
 
-    statusElement.className =
-        "status-message " +
-        type;
+    status.className =
+        "status-message " + type;
+}
 
+
+function clearStatus() {
+
+    status.textContent = "";
+
+    status.className =
+        "status-message";
 }
