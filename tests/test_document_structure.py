@@ -1,3 +1,5 @@
+import unittest
+
 from src.pdf_reader.reader import PDFReader
 from src.layout.layout_analyzer import LayoutAnalyzer
 from src.heading_detection.heading_detector import HeadingDetector
@@ -6,85 +8,206 @@ from src.table_detection.table_detector import TableDetector
 from src.document_structure.structure_builder import DocumentStructureBuilder
 
 
-def main():
+class TestDocumentStructureBuilder(unittest.TestCase):
 
-    pdf_path = "sample_data/input/sample.pdf"
+    @classmethod
+    def setUpClass(cls):
 
-    # Read PDF
-    pdf_reader = PDFReader(pdf_path)
+        cls.pdf_path = "sample_data/input/sample.pdf"
 
-    document_info = pdf_reader.get_document_info()
+        # Read PDF
+        pdf_reader = PDFReader(cls.pdf_path)
 
-    # Analyze layout
-    layout_analyzer = LayoutAnalyzer()
+        cls.document_info = pdf_reader.get_document_info()
 
-    layout_data = layout_analyzer.analyze_pdf(pdf_path)
+        # Analyze layout
+        layout_analyzer = LayoutAnalyzer()
 
-    # Detect headings
-    heading_detector = HeadingDetector()
+        cls.layout_data = layout_analyzer.analyze_pdf(
+            cls.pdf_path
+        )
 
-    heading_data = heading_detector.detect_headings(
-        layout_data
-    )
+        # Detect headings
+        heading_detector = HeadingDetector()
 
-    # Detect topics
-    topic_detector = TopicDetector()
+        cls.heading_data = heading_detector.detect_headings(
+            cls.layout_data
+        )
 
-    topic_data = topic_detector.detect_topics(
-        document_info["pages"]
-    )
+        # Detect topics
+        topic_detector = TopicDetector()
 
-    # Detect tables
-    table_detector = TableDetector()
+        cls.topic_data = topic_detector.detect_topics(
+            cls.document_info["pages"]
+        )
 
-    table_data = table_detector.detect_tables(
-        pdf_path
-    )
+        # Detect tables
+        table_detector = TableDetector()
 
-    # Build document structure
-    structure_builder = DocumentStructureBuilder()
+        cls.table_data = table_detector.detect_tables(
+            cls.pdf_path
+        )
 
-    document_structure = structure_builder.build_structure(
-        document_info,
-        heading_data,
-        topic_data,
-        table_data
-    )
+        # Build document structure
+        structure_builder = DocumentStructureBuilder()
 
-    # Print results
-    print("\n========== DOCUMENT STRUCTURE ==========\n")
+        cls.document_structure = (
+            structure_builder.build_structure(
+                cls.document_info,
+                cls.heading_data,
+                cls.topic_data,
+                cls.table_data
+            )
+        )
 
-    print(
-        f"File Name: "
-        f"{document_structure['file_name']}"
-    )
+    def test_document_structure_exists(self):
 
-    print(
-        f"Page Count: "
-        f"{document_structure['page_count']}"
-    )
+        self.assertIsNotNone(
+            self.document_structure
+        )
 
-    for page in document_structure["pages"]:
+    def test_document_structure_is_dictionary(self):
 
-        print(f"\nPAGE: {page['page_number']}")
+        self.assertIsInstance(
+            self.document_structure,
+            dict
+        )
 
-        print("\nHEADINGS:")
+    def test_required_top_level_keys_exist(self):
 
-        for heading in page["headings"]:
-            print(f"- {heading['text']}")
+        self.assertIn(
+            "file_name",
+            self.document_structure
+        )
 
-        print("\nTOPICS:")
+        self.assertIn(
+            "page_count",
+            self.document_structure
+        )
 
-        for topic, count in page["topics"]:
-            print(f"- {topic}: {count}")
+        self.assertIn(
+            "pages",
+            self.document_structure
+        )
 
-        print("\nTABLES:")
+    def test_file_name(self):
 
-        print(f"Tables Found: {len(page['tables'])}")
+        self.assertEqual(
+            self.document_structure["file_name"],
+            "sample.pdf"
+        )
 
-        print("\n" + "=" * 50)
+    def test_page_count(self):
+
+        self.assertEqual(
+            self.document_structure["page_count"],
+            2
+        )
+
+    def test_pages_exist(self):
+
+        pages = self.document_structure["pages"]
+
+        self.assertIsInstance(
+            pages,
+            list
+        )
+
+        self.assertGreater(
+            len(pages),
+            0
+        )
+
+    def test_page_count_matches_pages(self):
+
+        self.assertEqual(
+            len(self.document_structure["pages"]),
+            self.document_structure["page_count"]
+        )
+
+    def test_page_structure(self):
+
+        for page in self.document_structure["pages"]:
+
+            self.assertIn(
+                "page_number",
+                page
+            )
+
+            self.assertIn(
+                "text",
+                page
+            )
+
+            self.assertIn(
+                "headings",
+                page
+            )
+
+            self.assertIn(
+                "topics",
+                page
+            )
+
+            self.assertIn(
+                "tables",
+                page
+            )
+
+    def test_page_numbers(self):
+
+        for index, page in enumerate(
+            self.document_structure["pages"],
+            start=1
+        ):
+
+            self.assertEqual(
+                page["page_number"],
+                index
+            )
+
+    def test_page_text_exists(self):
+
+        for page in self.document_structure["pages"]:
+
+            self.assertIsInstance(
+                page["text"],
+                str
+            )
+
+            self.assertGreater(
+                len(page["text"].strip()),
+                0
+            )
+
+    def test_headings_is_list(self):
+
+        for page in self.document_structure["pages"]:
+
+            self.assertIsInstance(
+                page["headings"],
+                list
+            )
+
+    def test_topics_is_list(self):
+
+        for page in self.document_structure["pages"]:
+
+            self.assertIsInstance(
+                page["topics"],
+                list
+            )
+
+    def test_tables_is_list(self):
+
+        for page in self.document_structure["pages"]:
+
+            self.assertIsInstance(
+                page["tables"],
+                list
+            )
 
 
 if __name__ == "__main__":
 
-    main()
+    unittest.main()
