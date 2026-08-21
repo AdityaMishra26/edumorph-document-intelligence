@@ -12,6 +12,7 @@ class DocumentStructureBuilder:
         topic_data,
         table_data
     ):
+
         """
         Combine results from different modules into
         one document structure.
@@ -44,27 +45,17 @@ class DocumentStructureBuilder:
             )
 
             structure_pages.append({
-
                 "page_number": page_number,
-
                 "text": page["text"],
-
                 "headings": page_headings,
-
                 "topics": page_topics,
-
                 "tables": page_tables
-
             })
 
         return {
-
             "file_name": document_info["file_name"],
-
             "page_count": document_info["page_count"],
-
             "pages": structure_pages
-
         }
 
     def _get_page_data(
@@ -73,6 +64,7 @@ class DocumentStructureBuilder:
         page_number,
         key
     ):
+
         """
         Get specific data for a page.
         """
