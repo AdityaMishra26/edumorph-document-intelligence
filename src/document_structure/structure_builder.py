@@ -2,17 +2,34 @@ class DocumentStructureBuilder:
 
     """
     Build a structured representation of a document
-    using headings, topics, tables, page text,
-    and unified document elements.
+    using headings, topics, tables, paragraphs,
+    questions, and visual elements.
+
+    Existing keys such as headings, topics, and tables
+    are preserved for backward compatibility.
+
+    The unified "elements" list contains all detected
+    content in reading order.
     """
 
     def build_structure(
+
         self,
+
         document_info,
+
         heading_data,
+
         topic_data,
-        table_data
+
+        table_data,
+
+        content_data=None,
+
+        visual_data=None
+
     ):
+
         """
         Combine results from different modules into
         one document structure.
@@ -27,27 +44,97 @@ class DocumentStructureBuilder:
             page_number = page["page_number"]
 
             page_headings = self._get_page_data(
+
                 heading_data,
+
                 page_number,
+
                 "headings"
+
             )
 
             page_topics = self._get_page_data(
+
                 topic_data,
+
                 page_number,
+
                 "keywords"
+
             )
 
             page_tables = self._get_page_data(
+
                 table_data,
+
                 page_number,
+
                 "tables"
+
+            )
+
+            page_content = self._get_page_item(
+
+                content_data,
+
+                page_number
+
+            )
+
+            page_paragraphs = page_content.get(
+
+                "paragraphs",
+
+                []
+
+            )
+
+            page_questions = page_content.get(
+
+                "questions",
+
+                []
+
+            )
+
+            page_visuals = self._get_page_item(
+
+                visual_data,
+
+                page_number
+
+            )
+
+            page_images = page_visuals.get(
+
+                "images",
+
+                []
+
+            )
+
+            page_drawings = page_visuals.get(
+
+                "drawings",
+
+                []
+
             )
 
             elements = self._build_elements(
-                page["text"],
+
                 page_headings,
-                page_tables
+
+                page_paragraphs,
+
+                page_questions,
+
+                page_tables,
+
+                page_images,
+
+                page_drawings
+
             )
 
             structure_pages.append({
@@ -77,200 +164,581 @@ class DocumentStructureBuilder:
         }
 
     def _get_page_data(
+
         self,
+
         data_list,
+
         page_number,
+
         key
+
     ):
+
         """
-        Get specific data for a page.
+        Get specific list data for a page.
         """
+
+        if not data_list:
+
+            return []
 
         for item in data_list:
 
-            if item["page_number"] == page_number:
+            if item.get("page_number") == page_number:
 
-                return item.get(key, [])
+                return item.get(
+
+                    key,
+
+                    []
+
+                )
 
         return []
 
-    def _build_elements(
+    def _get_page_item(
+
         self,
-        page_text,
-        headings,
-        tables
+
+        data_list,
+
+        page_number
+
     ):
+
         """
-        Build a unified list of document elements.
+        Get the complete data dictionary
+        for a specific page.
+        """
 
-        Currently supports:
-        - heading
-        - paragraph
-        - question
-        - table
+        if not data_list:
 
-        Image, diagram, and flowchart detection
-        will be added in later modules.
+            return {}
+
+        for item in data_list:
+
+            if item.get("page_number") == page_number:
+
+                return item
+
+        return {}
+
+    def _build_elements(
+
+        self,
+
+        headings,
+
+        paragraphs,
+
+        questions,
+
+        tables,
+
+        images,
+
+        drawings
+
+    ):
+
+        """
+        Convert all detected page content into
+        one unified elements list.
+
+        Duplicate or overlapping text elements
+        are removed.
+
+        Every element is then sorted into
+        reading order.
         """
 
         elements = []
 
-        heading_texts = set()
+        # Add headings first.
+        # Headings have priority over questions
+        # when the same text appears in both lists.
 
         for heading in headings:
 
-            if isinstance(heading, dict):
+            text = heading.get(
 
-                text = heading.get(
-                    "text",
-                    ""
-                ).strip()
+                "text",
 
-                if text:
+                ""
 
-                    heading_texts.add(text)
+            ).strip()
 
-                    elements.append({
+            bounding_box = heading.get(
 
-                        "type": "heading",
+                "bounding_box",
 
-                        "content": text,
+                {}
 
-                        "metadata": {
+            )
 
-                            "level": heading.get(
-                                "level",
-                                None
-                            ),
+            elements.append({
 
-                            "bounding_box": heading.get(
-                                "bounding_box",
-                                None
-                            )
+                "type": "heading",
 
-                        }
+                "text": text,
 
-                    })
+                "bounding_box": bounding_box
 
-        paragraphs = self._split_paragraphs(
-            page_text
-        )
+            })
+
+        # Add paragraphs.
 
         for paragraph in paragraphs:
 
-            if paragraph in heading_texts:
+            text = paragraph.get(
+
+                "text",
+
+                ""
+
+            ).strip()
+
+            bounding_box = paragraph.get(
+
+                "bounding_box",
+
+                {}
+
+            )
+
+            if self._is_duplicate_text_element(
+
+                elements,
+
+                text,
+
+                bounding_box
+
+            ):
 
                 continue
 
-            if self._is_question(paragraph):
+            elements.append({
 
-                elements.append({
+                "type": "paragraph",
 
-                    "type": "question",
+                "text": text,
 
-                    "content": paragraph,
+                "bounding_box": bounding_box
 
-                    "metadata": {}
+            })
 
-                })
+        # Add questions.
+        # Skip questions that are already
+        # represented as headings.
 
-            else:
+        for question in questions:
 
-                elements.append({
+            text = question.get(
 
-                    "type": "paragraph",
+                "text",
 
-                    "content": paragraph,
+                ""
 
-                    "metadata": {}
+            ).strip()
 
-                })
+            bounding_box = question.get(
+
+                "bounding_box",
+
+                {}
+
+            )
+
+            if self._is_duplicate_text_element(
+
+                elements,
+
+                text,
+
+                bounding_box
+
+            ):
+
+                continue
+
+            elements.append({
+
+                "type": "question",
+
+                "text": text,
+
+                "bounding_box": bounding_box
+
+            })
+
+        # Add tables.
 
         for table in tables:
+
+            bounding_box = table.get(
+
+                "bounding_box",
+
+                {}
+
+            )
 
             elements.append({
 
                 "type": "table",
 
-                "content": table.get(
-                    "data",
-                    []
+                "table_number": table.get(
+
+                    "table_number"
+
                 ),
 
-                "metadata": {
+                "data": table.get(
 
-                    "table_number": table.get(
-                        "table_number",
-                        None
-                    ),
+                    "data",
 
-                    "bounding_box": table.get(
-                        "bounding_box",
-                        None
-                    )
+                    []
 
-                }
+                ),
+
+                "bounding_box": bounding_box
 
             })
 
-        return elements
+        # Add images.
 
-    def _split_paragraphs(
-        self,
-        page_text
-    ):
-        """
-        Split page text into meaningful paragraphs.
-        """
+        for image in images:
 
-        paragraphs = [
+            bounding_box = image.get(
 
-            paragraph.strip()
+                "bounding_box",
 
-            for paragraph in page_text.split(
-                "\n\n"
+                {}
+
             )
 
-            if paragraph.strip()
+            elements.append({
 
-        ]
+                "type": "image",
 
-        return paragraphs
+                "image_number": image.get(
 
-    def _is_question(
-        self,
-        text
-    ):
-        """
-        Detect whether text appears to be a question.
-        """
+                    "image_number"
 
-        text = text.strip()
+                ),
 
-        if not text:
+                "bounding_box": bounding_box
 
-            return False
+            })
 
-        question_prefixes = (
+        # Add drawings.
 
-            "Q.",
-            "Q:",
-            "Question",
-            "QUESTION",
-            "What ",
-            "Why ",
-            "How ",
-            "When ",
-            "Where ",
-            "Which ",
-            "Who "
+        for drawing in drawings:
+
+            bounding_box = drawing.get(
+
+                "bounding_box",
+
+                {}
+
+            )
+
+            elements.append({
+
+                "type": "drawing",
+
+                "drawing_number": drawing.get(
+
+                    "drawing_number"
+
+                ),
+
+                "item_count": drawing.get(
+
+                    "item_count",
+
+                    0
+
+                ),
+
+                "bounding_box": bounding_box
+
+            })
+
+        # Sort all elements from top to bottom.
+        # If two elements have the same vertical
+        # position, sort from left to right.
+
+        elements.sort(
+
+            key=lambda element: (
+
+                self._get_y_position(
+
+                    element.get(
+
+                        "bounding_box",
+
+                        {}
+
+                    )
+
+                ),
+
+                self._get_x_position(
+
+                    element.get(
+
+                        "bounding_box",
+
+                        {}
+
+                    )
+
+                )
+
+            )
 
         )
 
-        if text.endswith("?"):
+        return elements
 
-            return True
+    def _is_duplicate_text_element(
 
-        return text.startswith(
-            question_prefixes
+        self,
+
+        elements,
+
+        text,
+
+        bounding_box
+
+    ):
+
+        """
+        Check whether a text element already exists.
+
+        A duplicate is identified primarily by:
+
+        - same normalized text
+        - same or nearly identical position
+        """
+
+        normalized_text = self._normalize_text(
+
+            text
+
+        )
+
+        for element in elements:
+
+            existing_text = self._normalize_text(
+
+                element.get(
+
+                    "text",
+
+                    ""
+
+                )
+
+            )
+
+            if not existing_text:
+
+                continue
+
+            if existing_text != normalized_text:
+
+                continue
+
+            existing_box = element.get(
+
+                "bounding_box",
+
+                {}
+
+            )
+
+            if self._boxes_overlap(
+
+                existing_box,
+
+                bounding_box
+
+            ):
+
+                return True
+
+        return False
+
+    def _normalize_text(
+
+        self,
+
+        text
+
+    ):
+
+        """
+        Normalize text for duplicate comparison.
+        """
+
+        return " ".join(
+
+            text.lower().split()
+
+        )
+
+    def _boxes_overlap(
+
+        self,
+
+        box_one,
+
+        box_two
+
+    ):
+
+        """
+        Check whether two bounding boxes
+        represent approximately the same area.
+        """
+
+        if not box_one or not box_two:
+
+            return False
+
+        tolerance = 2
+
+        return (
+
+            abs(
+
+                box_one.get(
+
+                    "x0",
+
+                    0
+
+                ) - box_two.get(
+
+                    "x0",
+
+                    0
+
+                )
+
+            ) <= tolerance
+
+            and
+
+            abs(
+
+                box_one.get(
+
+                    "y0",
+
+                    0
+
+                ) - box_two.get(
+
+                    "y0",
+
+                    0
+
+                )
+
+            ) <= tolerance
+
+            and
+
+            abs(
+
+                box_one.get(
+
+                    "x1",
+
+                    0
+
+                ) - box_two.get(
+
+                    "x1",
+
+                    0
+
+                )
+
+            ) <= tolerance
+
+            and
+
+            abs(
+
+                box_one.get(
+
+                    "y1",
+
+                    0
+
+                ) - box_two.get(
+
+                    "y1",
+
+                    0
+
+                )
+
+            ) <= tolerance
+
+        )
+
+    def _get_y_position(
+
+        self,
+
+        bounding_box
+
+    ):
+
+        """
+        Get the vertical position of an element.
+        """
+
+        if not bounding_box:
+
+            return 0
+
+        return bounding_box.get(
+
+            "y0",
+
+            0
+
+        )
+
+    def _get_x_position(
+
+        self,
+
+        bounding_box
+
+    ):
+
+        """
+        Get the horizontal position of an element.
+        """
+
+        if not bounding_box:
+
+            return 0
+
+        return bounding_box.get(
+
+            "x0",
+
+            0
+
         )
