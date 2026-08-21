@@ -1,36 +1,106 @@
+import unittest
+
 from src.layout.layout_analyzer import LayoutAnalyzer
 
 
-def main():
-    pdf_path = "sample_data/input/sample.pdf"
+class TestLayoutAnalyzer(unittest.TestCase):
 
-    analyzer = LayoutAnalyzer()
+    @classmethod
+    def setUpClass(cls):
+        cls.pdf_path = "sample_data/input/sample.pdf"
+        cls.analyzer = LayoutAnalyzer()
+        cls.results = cls.analyzer.analyze_pdf(cls.pdf_path)
 
-    results = analyzer.analyze_pdf(pdf_path)
+    def test_results_exist(self):
+        self.assertIsNotNone(self.results)
+        self.assertGreater(len(self.results), 0)
 
-    print("\n========== LAYOUT ANALYSIS ==========\n")
+    def test_page_count(self):
+        self.assertEqual(len(self.results), 2)
 
-    for page in results:
-        print(f"PAGE: {page['page_number']}")
-        print(f"Page Size: {page['page_width']} x {page['page_height']}")
-        print(f"Number of Text Blocks: {len(page['blocks'])}\n")
+    def test_page_numbers(self):
+        self.assertEqual(
+            self.results[0]["page_number"],
+            1
+        )
 
-        for index, block in enumerate(page["blocks"], start=1):
-            print(f"BLOCK {index}")
+        self.assertEqual(
+            self.results[1]["page_number"],
+            2
+        )
 
-            print("Text:")
-            print(block["text"])
+    def test_page_dimensions(self):
+        for page in self.results:
+            self.assertGreater(
+                page["page_width"],
+                0
+            )
 
-            print("\nBounding Box:")
-            print(block["bounding_box"])
+            self.assertGreater(
+                page["page_height"],
+                0
+            )
 
-            print(f"Width: {block['width']}")
-            print(f"Height: {block['height']}")
+    def test_blocks_exist(self):
+        for page in self.results:
+            self.assertIn(
+                "blocks",
+                page
+            )
 
-            print("-" * 40)
+            self.assertIsInstance(
+                page["blocks"],
+                list
+            )
 
-        print("\n" + "=" * 50 + "\n")
+            self.assertGreater(
+                len(page["blocks"]),
+                0
+            )
+
+    def test_block_structure(self):
+        for page in self.results:
+            for block in page["blocks"]:
+
+                self.assertIn(
+                    "text",
+                    block
+                )
+
+                self.assertIn(
+                    "bounding_box",
+                    block
+                )
+
+                self.assertIn(
+                    "width",
+                    block
+                )
+
+                self.assertIn(
+                    "height",
+                    block
+                )
+
+                self.assertIsInstance(
+                    block["text"],
+                    str
+                )
+
+    def test_block_dimensions(self):
+        for page in self.results:
+            for block in page["blocks"]:
+
+                self.assertGreater(
+                    block["width"],
+                    0
+                )
+
+                self.assertGreater(
+                    block["height"],
+                    0
+                )
 
 
 if __name__ == "__main__":
-    main()
+    unittest.main()

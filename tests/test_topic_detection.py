@@ -1,39 +1,132 @@
+import unittest
+
 from src.pdf_reader.reader import PDFReader
 from src.topic_detection.topic_detector import TopicDetector
 
 
-def main():
+class TestTopicDetector(unittest.TestCase):
 
-    pdf_path = "sample_data/input/sample.pdf"
+    @classmethod
+    def setUpClass(cls):
 
-    # Read PDF text
-    pdf_reader = PDFReader(pdf_path)
+        cls.pdf_path = "sample_data/input/sample.pdf"
 
-    document_info = pdf_reader.get_document_info()
+        pdf_reader = PDFReader(cls.pdf_path)
 
-    pages_data = document_info["pages"]
+        document_info = pdf_reader.get_document_info()
 
-    # Detect topics
-    topic_detector = TopicDetector()
+        cls.pages_data = document_info["pages"]
 
-    results = topic_detector.detect_topics(
-        pages_data,
-        top_n=10
-    )
+        topic_detector = TopicDetector()
 
-    print("\n========== TOPIC DETECTION ==========\n")
+        cls.results = topic_detector.detect_topics(
+            cls.pages_data,
+            top_n=10
+        )
 
-    for page in results:
+    def test_results_exist(self):
 
-        print(f"PAGE: {page['page_number']}\n")
+        self.assertIsNotNone(
+            self.results
+        )
 
-        print("TOP KEYWORDS:\n")
+    def test_page_count(self):
 
-        for keyword, count in page["keywords"]:
-            print(f"{keyword}: {count}")
+        self.assertEqual(
+            len(self.results),
+            2
+        )
 
-        print("\n" + "=" * 40 + "\n")
+    def test_page_numbers(self):
+
+        self.assertEqual(
+            self.results[0]["page_number"],
+            1
+        )
+
+        self.assertEqual(
+            self.results[1]["page_number"],
+            2
+        )
+
+    def test_keywords_key_exists(self):
+
+        for page in self.results:
+
+            self.assertIn(
+                "keywords",
+                page
+            )
+
+    def test_keywords_exist(self):
+
+        total_keywords = sum(
+            len(page["keywords"])
+            for page in self.results
+        )
+
+        self.assertGreater(
+            total_keywords,
+            0
+        )
+
+    def test_keyword_structure(self):
+
+        for page in self.results:
+
+            for keyword_data in page["keywords"]:
+
+                self.assertIsInstance(
+                    keyword_data,
+                    tuple
+                )
+
+                self.assertEqual(
+                    len(keyword_data),
+                    2
+                )
+
+    def test_keyword_text_is_valid(self):
+
+        for page in self.results:
+
+            for keyword, count in page["keywords"]:
+
+                self.assertIsInstance(
+                    keyword,
+                    str
+                )
+
+                self.assertTrue(
+                    keyword.strip()
+                )
+
+    def test_keyword_count_is_valid(self):
+
+        for page in self.results:
+
+            for keyword, count in page["keywords"]:
+
+                self.assertIsInstance(
+                    count,
+                    int
+                )
+
+                self.assertGreater(
+                    count,
+                    0
+                )
+
+    def test_top_n_limit(self):
+
+        for page in self.results:
+
+            self.assertLessEqual(
+                len(page["keywords"]),
+                10
+            )
 
 
 if __name__ == "__main__":
-    main()
+
+    unittest.main()

@@ -1,45 +1,117 @@
+import unittest
+
 from src.layout.layout_analyzer import LayoutAnalyzer
 from src.heading_detection.heading_detector import HeadingDetector
 
 
-def main():
-    pdf_path = "sample_data/input/sample.pdf"
+class TestHeadingDetector(unittest.TestCase):
 
-    # Step 1: Analyze PDF layout
-    layout_analyzer = LayoutAnalyzer()
-    layout_results = layout_analyzer.analyze_pdf(pdf_path)
+    @classmethod
+    def setUpClass(cls):
 
-    # Step 2: Detect headings
-    heading_detector = HeadingDetector()
-    heading_results = heading_detector.detect_headings(
-        layout_results
-    )
+        cls.pdf_path = "sample_data/input/sample.pdf"
 
-    print("\n========== HEADING DETECTION ==========\n")
+        layout_analyzer = LayoutAnalyzer()
 
-    for page in heading_results:
-
-        print(f"PAGE: {page['page_number']}")
-        print(
-            f"Number of Headings: "
-            f"{len(page['headings'])}\n"
+        cls.layout_results = layout_analyzer.analyze_pdf(
+            cls.pdf_path
         )
 
-        for index, heading in enumerate(
-            page["headings"],
-            start=1
-        ):
-            print(f"HEADING {index}")
-            print(f"Text: {heading['text']}")
-            print(
-                f"Bounding Box: "
-                f"{heading['bounding_box']}"
-            )
-            print(f"Height: {heading['height']}")
-            print("-" * 40)
+        heading_detector = HeadingDetector()
 
-        print("\n" + "=" * 50 + "\n")
+        cls.heading_results = heading_detector.detect_headings(
+            cls.layout_results
+        )
+
+    def test_results_exist(self):
+
+        self.assertIsNotNone(
+            self.heading_results
+        )
+
+    def test_page_count(self):
+
+        self.assertEqual(
+            len(self.heading_results),
+            2
+        )
+
+    def test_page_numbers(self):
+
+        self.assertEqual(
+            self.heading_results[0]["page_number"],
+            1
+        )
+
+        self.assertEqual(
+            self.heading_results[1]["page_number"],
+            2
+        )
+
+    def test_headings_key_exists(self):
+
+        for page in self.heading_results:
+
+            self.assertIn(
+                "headings",
+                page
+            )
+
+    def test_headings_exist(self):
+
+        total_headings = sum(
+            len(page["headings"])
+            for page in self.heading_results
+        )
+
+        self.assertGreater(
+            total_headings,
+            0
+        )
+
+    def test_heading_structure(self):
+
+        for page in self.heading_results:
+
+            for heading in page["headings"]:
+
+                self.assertIn(
+                    "text",
+                    heading
+                )
+
+                self.assertIn(
+                    "bounding_box",
+                    heading
+                )
+
+                self.assertIn(
+                    "height",
+                    heading
+                )
+
+    def test_heading_text_exists(self):
+
+        for page in self.heading_results:
+
+            for heading in page["headings"]:
+
+                self.assertTrue(
+                    heading["text"].strip()
+                )
+
+    def test_heading_dimensions(self):
+
+        for page in self.heading_results:
+
+            for heading in page["headings"]:
+
+                self.assertGreater(
+                    heading["height"],
+                    0
+                )
 
 
 if __name__ == "__main__":
-    main()
+
+    unittest.main()
